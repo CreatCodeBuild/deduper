@@ -1,2 +1,2 @@
 run:
-	deno run --allow-read dedup.ts
+	deno run --check --allow-read dedup.ts
