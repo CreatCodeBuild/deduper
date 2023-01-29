@@ -84,63 +84,7 @@ function findDup(fileInfos: fileWithHash[]) {
 }
 
 
-const rootDir = "./testdata"
-const skipDir = "WeChat Files"
-const suffix = [".jpg", ".jpeg", ".mp4", ".png", ".m4v", ".mov", ".flv"]
 
-
-console.log(`Start to scan ${rootDir}`)
-// console.log(`Including ${suffix.join(" ")}`)
-
-const startTime = new Date()
-// let totalFiles = [] as file[]
-const promises = []
-for await (const file of walkDir(rootDir)) {
-    const promise = Deno.readFile(file.path).then(async bin => {
-        const hash = await crypto.subtle.digest(
-            "SHA-256",
-            bin,
-        )
-        return {
-            hash: new TextDecoder().decode(hash),
-            size: file.size,
-            name: file.name,
-            path: file.path
-        }
-    });
-    promises.push(promise)
-}
-const totalFiles = await Promise.all(promises)
-// console.log(`Time cost ${(new Date()).getTime() - startTime.getTime()} mili sec`)
-
-
-
-const filePaths = totalFiles.filter(fileInfo => !fileInfo.path.includes(skipDir))
-// const dups = Array.from(findDup(filePaths)).filter(dup => (
-//     suffix.filter(suf => dup.name.includes(suf)).length > 0
-// ))
-const dups = findDup(filePaths)
-// const dupSize = dups.reduce((sum, dup) => sum + dup.size * dup.paths.length, 0)
-let dupSize = 0
-for (const dup of dups.values()) {
-    for (const info of dup) {
-        dupSize += info.size
-    }
-}
-
-console.log(`Scanned ${totalFiles.length} files`)
-console.log(`Skipped ${totalFiles.length - filePaths.length} files`)
-console.log(`There are ${Array.from(dups.values()).reduce((count, dup) => {
-    if (dup.length > 1) {
-        return count + dup.length
-    }
-    return count
-}, 0)} duplicated files, ${dupSize / 1024 / 1024} MBs`)
-// console.table(dups.map(dup=>({
-//     size: dupSize(dup),
-//     count: dup.paths.length,
-//     paths: JSON.stringify(dup.paths)
-// })))
 
 function dupsToDelete(dups: Duplication.Data[]) {
     return dups.map(dupsToRemove)
@@ -157,4 +101,62 @@ function dupsToDelete(dups: Duplication.Data[]) {
 //     }
 //     console.log()
 // }
-console.log(`Time cost ${(new Date()).getTime() - startTime.getTime()} mili sec`)
+
+export async function main(rootDir: string, skipDir: string, suffix: string[]) {
+    console.log(`Start to scan ${rootDir}`)
+    // console.log(`Including ${suffix.join(" ")}`)
+    
+    const startTime = new Date()
+    // let totalFiles = [] as file[]
+    const promises = []
+    for await (const file of walkDir(rootDir)) {
+        const promise = Deno.readFile(file.path).then(async bin => {
+            const hash = await crypto.subtle.digest(
+                "SHA-256",
+                bin,
+            )
+            console.log(Deno.memoryUsage())
+            return {
+                hash: new TextDecoder().decode(hash),
+                size: file.size,
+                name: file.name,
+                path: file.path
+            }
+        });
+        promises.push(promise)
+    }
+    const totalFiles = await Promise.all(promises)
+    // console.log(`Time cost ${(new Date()).getTime() - startTime.getTime()} mili sec`)
+    
+    
+    
+    const filePaths = totalFiles.filter(fileInfo => !fileInfo.path.includes(skipDir))
+    // const dups = Array.from(findDup(filePaths)).filter(dup => (
+    //     suffix.filter(suf => dup.name.includes(suf)).length > 0
+    // ))
+    const dups = findDup(filePaths)
+    // const dupSize = dups.reduce((sum, dup) => sum + dup.size * dup.paths.length, 0)
+    let dupSize = 0
+    for (const dup of dups.values()) {
+        for (const info of dup) {
+            dupSize += info.size
+        }
+    }
+    
+    console.log(`Scanned ${totalFiles.length} files`)
+    console.log(`Skipped ${totalFiles.length - filePaths.length} files`)
+    console.log(`There are ${Array.from(dups.values()).reduce((count, dup) => {
+        if (dup.length > 1) {
+            return count + dup.length
+        }
+        return count
+    }, 0)} duplicated files, ${dupSize / 1024 / 1024} MBs`)
+    // console.table(dups.map(dup=>({
+    //     size: dupSize(dup),
+    //     count: dup.paths.length,
+    //     paths: JSON.stringify(dup.paths)
+    // })))
+    console.log(`Time cost ${(new Date()).getTime() - startTime.getTime()} mili sec`)
+    return dups
+}
+
